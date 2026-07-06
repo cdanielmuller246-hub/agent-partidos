@@ -309,6 +309,151 @@
   let autoRefreshTimer = null;
   let hasLive = false;
 
+  // ── Traducción ─────────────────────────────────────────────────
+  // Diccionario local para nombres de países (sin latencia, sin API)
+  const COUNTRY_NAMES = {
+    'United States': 'Estados Unidos',
+    'Morocco': 'Marruecos',
+    'Germany': 'Alemania',
+    'France': 'Francia',
+    'Brazil': 'Brasil',
+    'Argentina': 'Argentina',
+    'Spain': 'España',
+    'England': 'Inglaterra',
+    'Netherlands': 'Países Bajos',
+    'Belgium': 'Bélgica',
+    'Croatia': 'Croacia',
+    'Serbia': 'Serbia',
+    'Switzerland': 'Suiza',
+    'Denmark': 'Dinamarca',
+    'Mexico': 'México',
+    'Canada': 'Canadá',
+    'Ecuador': 'Ecuador',
+    'Uruguay': 'Uruguay',
+    'Colombia': 'Colombia',
+    'Chile': 'Chile',
+    'Peru': 'Perú',
+    'Paraguay': 'Paraguay',
+    'Bolivia': 'Bolivia',
+    'Venezuela': 'Venezuela',
+    'Japan': 'Japón',
+    'South Korea': 'Corea del Sur',
+    'Australia': 'Australia',
+    'Saudi Arabia': 'Arabia Saudita',
+    'Iran': 'Irán',
+    'Qatar': 'Catar',
+    'Senegal': 'Senegal',
+    'Ghana': 'Ghana',
+    'Nigeria': 'Nigeria',
+    'Cameroon': 'Camerún',
+    'Tunisia': 'Túnez',
+    'Algeria': 'Argelia',
+    'Egypt': 'Egipto',
+    "Ivory Coast": 'Costa de Marfil',
+    'Poland': 'Polonia',
+    'Czech Republic': 'República Checa',
+    'Slovakia': 'Eslovaquia',
+    'Hungary': 'Hungría',
+    'Turkey': 'Turquía',
+    'Ukraine': 'Ucrania',
+    'Romania': 'Rumania',
+    'Austria': 'Austria',
+    'Scotland': 'Escocia',
+    'Wales': 'Gales',
+    'Portugal': 'Portugal',
+    'Italy': 'Italia',
+    'Russia': 'Rusia',
+    'Sweden': 'Suecia',
+    'Norway': 'Noruega',
+    'Iceland': 'Islandia',
+    'Finland': 'Finlandia',
+    'Greece': 'Grecia',
+    'Costa Rica': 'Costa Rica',
+    'Panama': 'Panamá',
+    'Jamaica': 'Jamaica',
+    'Honduras': 'Honduras',
+    'El Salvador': 'El Salvador',
+    'Guatemala': 'Guatemala',
+    'Haiti': 'Haití',
+    'Cuba': 'Cuba',
+    'Dominican Republic': 'República Dominicana',
+    'Trinidad & Tobago': 'Trinidad y Tobago',
+    'New Zealand': 'Nueva Zelanda',
+    'Indonesia': 'Indonesia',
+    'Thailand': 'Tailandia',
+    'Vietnam': 'Vietnam',
+    'China': 'China',
+    'India': 'India',
+    'Iraq': 'Irak',
+    'Jordan': 'Jordania',
+    'United Arab Emirates': 'Emiratos Árabes Unidos',
+    'Lebanon': 'Líbano',
+    'Syria': 'Siria',
+    'Palestine': 'Palestina',
+    'Israel': 'Israel',
+    'Slovenia': 'Eslovenia',
+    'Albania': 'Albania',
+    'North Macedonia': 'Macedonia del Norte',
+    'Montenegro': 'Montenegro',
+    'Bosnia & Herzegovina': 'Bosnia y Herzegovina',
+    'Kosovo': 'Kosovo',
+    'Georgia': 'Georgia',
+    'Latvia': 'Letonia',
+    'Lithuania': 'Lituania',
+    'Estonia': 'Estonia',
+    'Belarus': 'Bielorrusia',
+    'Moldova': 'Moldavia',
+    'Luxembourg': 'Luxemburgo',
+    'Cyprus': 'Chipre',
+    'South Africa': 'Sudáfrica',
+    'Mali': 'Malí',
+    'Burkina Faso': 'Burkina Faso',
+    'Tanzania': 'Tanzania',
+    'Zimbabwe': 'Zimbabue',
+    'Angola': 'Angola',
+    'Uganda': 'Uganda',
+    'Kenya': 'Kenia',
+    'Rwanda': 'Ruanda',
+    'Guinea': 'Guinea',
+    'Benin': 'Benín',
+    'Gabon': 'Gabón',
+    'Togo': 'Togo',
+    'Cape Verde': 'Cabo Verde',
+    'Gambia': 'Gambia',
+    'Niger': 'Níger',
+    'DR Congo': 'RD Congo',
+    'Congo': 'Congo',
+    'Zambia': 'Zambia',
+    'Fiji': 'Fiyi',
+    'Tahiti': 'Tahití',
+    'New Caledonia': 'Nueva Caledonia',
+    'Papua New Guinea': 'Papúa Nueva Guinea',
+  };
+
+  // Cache para no re-traducir el mismo texto dos veces
+  const _translationCache = {};
+
+  // Traduce un texto en inglés al español usando MyMemory (gratis, sin clave)
+  async function translateText(text) {
+    if (!text) return text;
+    if (_translationCache[text]) return _translationCache[text];
+    try {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|es&de=dashboard@mundial2026`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const translated = data.responseData?.translatedText || text;
+      _translationCache[text] = translated;
+      return translated;
+    } catch {
+      return text; // si falla la API, muestra el original
+    }
+  }
+
+  // Devuelve el nombre del país en español (diccionario local, instantáneo)
+  function translateTeamName(name) {
+    return COUNTRY_NAMES[name] || name;
+  }
+
   // ── Date helpers ───────────────────────────────────────────────
   function toYMD(d) {
     return d.toISOString().slice(0, 10).replace(/-/g, '');
@@ -368,13 +513,13 @@
       }).join('');
   }
 
-  function renderCard(event) {
+  function renderCard(event, translatedHeadline = '') {
     const comp = event.competitions[0];
     const home = comp.competitors.find(c => c.homeAway === 'home');
     const away = comp.competitors.find(c => c.homeAway === 'away');
     const si   = getStatusInfo(comp);
     const details = comp.details || [];
-    const headline = comp.headlines?.[0]?.description || '';
+    const headline = translatedHeadline || comp.headlines?.[0]?.description || '';
     const group = comp.altGameNote || '';
 
     const homeGoals = renderGoalChips(details, home?.id);
@@ -402,7 +547,7 @@
         <div class="team home ${home?.winner ? 'winner' : ''}">
           <img src="${home?.team?.logo || ''}" alt="${home?.team?.displayName}" onerror="this.style.display='none'"/>
           <div class="team-name">
-            ${home?.team?.displayName}
+            ${translateTeamName(home?.team?.displayName)}
             <small>${home?.team?.abbreviation}</small>
           </div>
         </div>
@@ -416,7 +561,7 @@
         <div class="team away ${away?.winner ? 'winner' : ''}">
           <img src="${away?.team?.logo || ''}" alt="${away?.team?.displayName}" onerror="this.style.display='none'"/>
           <div class="team-name">
-            ${away?.team?.displayName}
+            ${translateTeamName(away?.team?.displayName)}
             <small>${away?.team?.abbreviation}</small>
           </div>
         </div>
@@ -427,7 +572,7 @@
     </div>`;
   }
 
-  function renderAll(data) {
+  async function renderAll(data) {
     const container = document.getElementById('matches-container');
     const summaryBar = document.getElementById('summary-bar');
     const events = data.events || [];
@@ -452,19 +597,28 @@
       ${upcoming.length ? `<div class="stat-pill"><span>${upcoming.length}</span> por jugar</div>` : ''}
     `;
 
+    // Pre-traducir todos los headlines en paralelo (MyMemory API)
+    const headlineMap = {};
+    await Promise.all(events.map(async e => {
+      const h = e.competitions[0].headlines?.[0]?.description;
+      if (h) headlineMap[h] = await translateText(h);
+    }));
+
+    const getHL = e => headlineMap[e.competitions[0].headlines?.[0]?.description] || '';
+
     let html = '';
 
     if (live.length) {
       html += `<div class="section-label live-label">🔴 En vivo</div>`;
-      html += live.map(renderCard).join('');
+      html += live.map(e => renderCard(e, getHL(e))).join('');
     }
     if (upcoming.length) {
       html += `<div class="section-label upcoming-label">🕐 Próximos</div>`;
-      html += upcoming.map(renderCard).join('');
+      html += upcoming.map(e => renderCard(e, getHL(e))).join('');
     }
     if (finished.length) {
       html += `<div class="section-label finished-label">✅ Finalizados</div>`;
-      html += finished.map(renderCard).join('');
+      html += finished.map(e => renderCard(e, getHL(e))).join('');
     }
 
     container.innerHTML = html;
