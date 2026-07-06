@@ -438,12 +438,17 @@
     if (!text) return text;
     if (_translationCache[text]) return _translationCache[text];
     try {
-      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|es&de=dashboard@mundial2026`;
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|es`;
       const res = await fetch(url);
       const data = await res.json();
-      const translated = data.responseData?.translatedText || text;
-      _translationCache[text] = translated;
-      return translated;
+      const status = data.responseStatus;
+      const translated = data.responseData?.translatedText || '';
+      // Si la API devuelve error o texto inválido, usar el original
+      const result = (status === 200 && translated && !translated.toUpperCase().includes('INVALID'))
+        ? translated
+        : text;
+      _translationCache[text] = result;
+      return result;
     } catch {
       return text; // si falla la API, muestra el original
     }
